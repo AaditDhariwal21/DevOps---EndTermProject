@@ -1,0 +1,27 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is git-ignored.
+# Never put AWS access keys here — Terraform reads credentials from the
+# AWS CLI profile / environment (aws configure, AWS_PROFILE, or aws sso login).
+
+region       = "ap-south-1"
+project_name = "deskflow"
+environment  = "dev"
+
+vpc_cidr = "10.0.0.0/16"
+az_count = 2
+
+cluster_version     = "1.35"
+node_instance_types = ["t3.medium"]
+node_desired_size   = 3
+node_min_size       = 2
+node_max_size       = 4
+
+# Other IAM users/roles that should get kubectl admin (optional)
+cluster_admin_arns = [
+  # "arn:aws:iam::123456789012:user/teammate",
+]
+
+# Enables keyless GitHub Actions deploys (OIDC). Format: "owner/repo".
+github_repository = "your-github-username/deskflow"
+
+# Set to false if your AWS account already has the GitHub OIDC provider.
+create_github_oidc_provider = true
