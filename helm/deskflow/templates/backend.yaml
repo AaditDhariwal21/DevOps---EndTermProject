@@ -1,0 +1,143 @@
+{{- $fullname := include "deskflow.fullname" . -}}
+{{- $port := int .Values.backend.port -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ $port }}
+      targetPort: http
+  selector:
+    {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never drop below the current capacity during a deploy
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "backend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "backend") | nindent 8 }}
+      annotations:
+        # Roll the pods when the DB secret changes.
+        checksum/db-secret: {{ include (print $.Template.BasePath "/postgresql-secret.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backend
+          image: {{ include "deskflow.backendImage" . | quote }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $port }}
+          env:
+            - name: PORT
+              value: {{ $port | quote }}
+            - name: ENVIRONMENT
+              value: {{ .Values.environment | quote }}
+            - name: GIT_SHA
+              value: {{ default .Chart.AppVersion .Values.backend.image.tag | toString | quote }}
+            - name: DB_HOST
+              value: {{ include "deskflow.db.host" . | quote }}
+            - name: DB_PORT
+              value: {{ include "deskflow.db.port" . | quote }}
+            - name: DB_USER
+              value: {{ include "deskflow.db.user" . | quote }}
+            - name: DB_NAME
+              value: {{ include "deskflow.db.name" . | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deskflow.db.secretName" . }}
+                  key: password
+            {{- with .Values.backend.corsOrigins }}
+            - name: CORS_ORIGINS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.backend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          # Startup: give migrations time to run before liveness kicks in (up to 150s).
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          # Liveness: is the process alive? (cheap, no DB) — failing restarts the container.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness: can it serve traffic? (checks DB) — failing removes it from the Service.
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            {{- include "deskflow.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # Prefer spreading replicas over nodes so one node failure doesn't take the API down.
+      affinity:
+        {{- if .Values.affinity }}
+        {{- toYaml .Values.affinity | nindent 8 }}
+        {{- else }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "backend") | nindent 20 }}
+        {{- end }}

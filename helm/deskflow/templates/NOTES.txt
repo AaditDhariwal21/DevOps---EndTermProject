@@ -1,0 +1,24 @@
+DeskFlow {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Backend image : {{ include "deskflow.backendImage" . }}
+Frontend image: {{ include "deskflow.frontendImage" . }}
+
+Check it:
+  kubectl get pods,svc,ingress,hpa -n {{ .Release.Namespace }}
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+
+Open the app through the Ingress ({{ .Values.ingress.className }}):
+{{- if .Values.ingress.host }}
+  http://{{ .Values.ingress.host }}/          (UI)
+  http://{{ .Values.ingress.host }}/docs      (Swagger)
+{{- else }}
+  kubectl get ingress {{ include "deskflow.fullname" . }} -n {{ .Release.Namespace }}
+  → open http://<ADDRESS>/  and  http://<ADDRESS>/docs
+{{- end }}
+{{- end }}
+
+Without an Ingress:
+  kubectl port-forward svc/{{ include "deskflow.fullname" . }}-frontend 3000:80 -n {{ .Release.Namespace }}
+  → http://localhost:3000

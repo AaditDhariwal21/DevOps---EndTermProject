@@ -1,0 +1,134 @@
+# Default values for the DeskFlow chart.
+# Environment-specific overrides live in values-dev.yaml (local cluster) and
+# values-eks.yaml (AWS). CI sets the image tags to the Git commit SHA.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Shown in the UI and /api/system.
+environment: kubernetes
+
+# Needed only if the GHCR packages are private:
+#   kubectl create secret docker-registry ghcr-pull --docker-server=ghcr.io \
+#     --docker-username=<user> --docker-password=<PAT with read:packages> -n deskflow
+imagePullSecrets: []
+#  - name: ghcr-pull
+
+# ---------------------------------------------------------------- backend
+backend:
+  image:
+    repository: ghcr.io/your-github-username/deskflow-backend
+    tag: ""            # defaults to .Chart.AppVersion; CI passes the commit SHA
+    pullPolicy: IfNotPresent
+  # Ignored while autoscaling is enabled (the HPA owns the replica count).
+  replicaCount: 2
+  port: 8000
+  corsOrigins: ""
+  resources:
+    # Requests are required for the HPA's CPU-utilisation maths.
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 60
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  extraEnv: []
+
+# ---------------------------------------------------------------- frontend
+frontend:
+  image:
+    repository: ghcr.io/your-github-username/deskflow-frontend
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# ---------------------------------------------------------------- database
+# In-cluster PostgreSQL (StatefulSet + PVC) for the classroom demo.
+# For production on AWS, prefer Amazon RDS: set postgresql.enabled=false and
+# fill in externalDatabase.
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 17-alpine
+    pullPolicy: IfNotPresent
+  auth:
+    username: deskflow
+    database: deskflow
+    # Leave empty to auto-generate a random password (kept across upgrades).
+    password: ""
+    # Or point at a Secret you manage yourself (must contain key "password").
+    existingSecret: ""
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""   # "" = cluster default
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+externalDatabase:
+  host: ""
+  port: 5432
+  username: deskflow
+  database: deskflow
+  existingSecret: ""   # Secret with key "password"
+
+# ---------------------------------------------------------------- ingress
+# Routes /api (and Swagger /docs) to the backend, everything else to the frontend.
+# Remember: this is only configuration — an Ingress controller must be installed.
+ingress:
+  enabled: true
+  className: traefik
+  # Empty host = match any hostname (handy for an AWS load balancer DNS name).
+  host: ""
+  annotations: {}
+  tls: []
+  #  - secretName: deskflow-tls
+  #    hosts: [deskflow.example.com]
+
+# ---------------------------------------------------------------- monitoring
+metrics:
+  serviceMonitor:
+    # Requires the Prometheus Operator CRDs (kube-prometheus-stack).
+    enabled: false
+    interval: 15s
+    labels: {}
+  grafanaDashboard:
+    # ConfigMap picked up by the Grafana sidecar (label grafana_dashboard=1).
+    enabled: false
+    labels:
+      grafana_dashboard: "1"
+
+podSecurityContext: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

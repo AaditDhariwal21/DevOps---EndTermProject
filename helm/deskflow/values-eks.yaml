@@ -1,0 +1,30 @@
+# AWS EKS (created by ../../terraform). Used by the GitHub Actions deploy job,
+# which also sets backend/frontend image.repository + image.tag (commit SHA).
+
+environment: eks-production
+
+backend:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 60
+
+frontend:
+  replicaCount: 2
+
+postgresql:
+  persistence:
+    size: 5Gi
+    storageClass: gp3   # created by k8s/storageclass-gp3.yaml
+
+ingress:
+  enabled: true
+  className: traefik
+  host: ""              # open the app via the load balancer's DNS name
+
+metrics:
+  serviceMonitor:
+    enabled: true
+  grafanaDashboard:
+    enabled: true

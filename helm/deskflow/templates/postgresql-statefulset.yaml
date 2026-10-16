@@ -1,0 +1,107 @@
+{{- if .Values.postgresql.enabled }}
+{{- $fullname := include "deskflow.postgresql.fullname" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "database") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "database") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "database") | nindent 4 }}
+spec:
+  serviceName: {{ $fullname }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "database") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "database") | nindent 8 }}
+    spec:
+      securityContext:
+        # uid/gid 70 = "postgres" in the Alpine image; fsGroup makes the volume writable.
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deskflow.db.secretName" . }}
+                  key: password
+            # A sub-directory, because a fresh EBS volume root contains lost+found.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: run
+          emptyDir: {}
+        {{- if not .Values.postgresql.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+  {{- if .Values.postgresql.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "database") | nindent 10 }}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.postgresql.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.persistence.size }}
+  {{- end }}
+{{- end }}

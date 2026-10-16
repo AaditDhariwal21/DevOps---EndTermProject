@@ -1,0 +1,35 @@
+# `helm test deskflow -n deskflow` — checks the backend is ready (DB reachable)
+# and that the frontend serves the app.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "deskflow.fullname" . }}-test-connection
+  labels:
+    {{- include "deskflow.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: smoke-test
+      image: busybox:1.37
+      command: ["sh", "-c"]
+      args:
+        - |
+          set -e
+          wget -qO- http://{{ include "deskflow.fullname" . }}-backend:{{ .Values.backend.port }}/ready
+          echo
+          wget -qO- http://{{ include "deskflow.fullname" . }}-frontend/nginx-health
+          wget -qO- http://{{ include "deskflow.fullname" . }}-frontend/api/tickets/stats
+          echo
+          echo "All DeskFlow checks passed"
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]

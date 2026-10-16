@@ -1,0 +1,15 @@
+apiVersion: v2
+name: deskflow
+description: DeskFlow helpdesk — React frontend, FastAPI backend and PostgreSQL, with Ingress, HPA and Prometheus monitoring.
+type: application
+# Chart version: bump when templates change.
+version: 1.0.0
+# App version: CI overrides the image tags with the Git commit SHA.
+appVersion: "1.0.0"
+keywords:
+  - helpdesk
+  - fastapi
+  - react
+  - postgresql
+maintainers:
+  - name: Aadit Dhariwal

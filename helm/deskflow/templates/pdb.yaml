@@ -1,0 +1,18 @@
+{{- /* Keep at least one Pod running during voluntary disruptions (node drains, upgrades). */}}
+{{- range $component := list "backend" "frontend" }}
+{{- $cfg := index $.Values $component }}
+{{- if $cfg.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "deskflow.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "deskflow.componentLabels" (dict "ctx" $ "component" $component) | nindent 4 }}
+spec:
+  minAvailable: {{ $cfg.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" $component) | nindent 6 }}
+{{- end }}
+{{- end }}

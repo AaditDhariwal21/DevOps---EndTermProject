@@ -1,0 +1,58 @@
+{{- if .Values.ingress.enabled }}
+{{- $fullname := include "deskflow.fullname" . -}}
+{{- $backend := printf "%s-backend" $fullname -}}
+{{- $backendPort := int .Values.backend.port -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "deskflow.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - {{- with .Values.ingress.host }}
+      host: {{ . | quote }}
+      {{- end }}
+      http:
+        paths:
+          # /api/* → FastAPI (no rewrite needed: the backend already serves /api/...)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $backend }}
+                port:
+                  number: {{ $backendPort }}
+          # Swagger UI + schema, so /docs works through the same hostname.
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $backend }}
+                port:
+                  number: {{ $backendPort }}
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: {{ $backend }}
+                port:
+                  number: {{ $backendPort }}
+          # Everything else → React (Nginx)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-frontend
+                port:
+                  number: 80
+{{- end }}

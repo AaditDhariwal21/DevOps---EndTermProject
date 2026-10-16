@@ -1,0 +1,39 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+# Tells the Prometheus Operator to scrape GET /metrics on every backend Pod
+# behind the backend Service.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "deskflow.fullname" . }}-backend
+  labels:
+    {{- include "deskflow.componentLabels" (dict "ctx" $ "component" "backend") | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "deskflow.selectorLabels" (dict "ctx" $ "component" "backend") | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}
+{{- if .Values.metrics.grafanaDashboard.enabled }}
+---
+# Grafana's sidecar watches for ConfigMaps with the grafana_dashboard label
+# and loads the JSON automatically — no manual import needed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "deskflow.fullname" . }}-dashboard
+  labels:
+    {{- include "deskflow.labels" . | nindent 4 }}
+    {{- toYaml .Values.metrics.grafanaDashboard.labels | nindent 4 }}
+data:
+  deskflow-dashboard.json: |-
+    {{- .Files.Get "dashboards/deskflow-dashboard.json" | nindent 4 }}
+{{- end }}

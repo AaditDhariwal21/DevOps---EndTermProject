@@ -1,0 +1,40 @@
+# Local cluster (minikube / Docker Desktop / kind).
+#
+#   helm upgrade --install deskflow ./helm/deskflow -n deskflow -f helm/deskflow/values-dev.yaml
+#
+# Images are built locally and loaded into the cluster (see README), so they are
+# never pulled from a registry.
+
+environment: minikube
+
+backend:
+  image:
+    repository: deskflow-backend
+    tag: local
+    pullPolicy: Never
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 5
+
+frontend:
+  image:
+    repository: deskflow-frontend
+    tag: local
+    pullPolicy: Never
+
+postgresql:
+  auth:
+    password: deskflow-dev   # fixed for convenience in the local demo only
+  persistence:
+    size: 1Gi
+
+ingress:
+  enabled: true
+  className: traefik      # use "nginx" with `minikube addons enable ingress`
+  host: deskflow.local    # add "127.0.0.1 deskflow.local" to your hosts file
+
+metrics:
+  serviceMonitor:
+    enabled: true
+  grafanaDashboard:
+    enabled: true
