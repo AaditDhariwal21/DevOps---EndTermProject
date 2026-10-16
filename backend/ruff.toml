@@ -1,0 +1,8 @@
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "BLE"]
+# FastAPI's Depends()/Query() in defaults is the idiomatic pattern.
+ignore = ["B008"]
