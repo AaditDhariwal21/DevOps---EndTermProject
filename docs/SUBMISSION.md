@@ -97,7 +97,7 @@ Screenshot: `trivy.png` (job log or run summary table)
 | Clean destroy | `scripts/destroy-eks.sh` |
 | `terraform.tfvars.example`, no secrets | committed example; `*.tfvars`/state git-ignored |
 
-Screenshots: `tf-plan.png`, `aws-vpc.png`, `aws-eks.png` (ap-south-1), `tf-destroy.png`
+Screenshots: `tf-plan.png`, `aws-vpc.png`, `aws-eks.png` (ap-southeast-2), `tf-destroy.png`
 
 ## M8 Kubernetes + Helm (15)
 

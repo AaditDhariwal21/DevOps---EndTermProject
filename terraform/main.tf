@@ -70,6 +70,11 @@ module "eks" {
   authentication_mode                      = "API"
   enable_cluster_creator_admin_permissions = true
 
+  # IRSA needs an IAM OIDC identity provider, which some AWS Organizations (e.g.
+  # course sandboxes) forbid via SCP. Nothing here relies on IRSA: the EBS CSI
+  # driver uses the node role (see the node group below).
+  enable_irsa = false
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 

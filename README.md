@@ -51,7 +51,7 @@ flowchart LR
 
     tf[Terraform] -->|creates| aws
 
-    subgraph aws[AWS ap-south-1]
+    subgraph aws[AWS ap-southeast-2]
         subgraph vpc[VPC: 2 public + 2 private subnets]
             nlb[Network Load Balancer]
             subgraph eks[EKS cluster]
@@ -76,8 +76,8 @@ flowchart LR
 | Metrics | `prometheus-fastapi-instrumentator` + a custom business counter |
 | Tests | pytest (31 tests) on an in-memory SQLite DB, ruff lint |
 | Containers | Multi-stage Dockerfiles, non-root users, Docker Compose |
-| CI/CD | GitHub Actions → Trivy → GHCR → Helm on EKS (OIDC, no stored AWS keys) |
-| Infrastructure | Terraform: VPC + EKS 1.35 + managed node group + GitHub OIDC role |
+| CI/CD | GitHub Actions → Trivy → GHCR → Helm on EKS (OIDC role or access-key secrets) |
+| Infrastructure | Terraform: VPC + EKS 1.35 + managed node group (+ optional GitHub OIDC role) |
 | Platform | Helm chart, Traefik Ingress, HPA, PDBs, metrics-server |
 | Observability | kube-prometheus-stack (Prometheus Operator + Grafana), auto-provisioned dashboard |
 
@@ -219,7 +219,7 @@ repo-scan ────┘
 | `frontend-build` | `npm ci && npm run build` | Proves the UI compiles |
 | `repo-scan` | Trivy secret scan (blocking) + IaC misconfig scan (report) | Catches committed credentials |
 | `build-scan-push` | `docker build` → Trivy (fails on fixable HIGH/CRITICAL) → push `ghcr.io/<owner>/deskflow-{backend,frontend}:<commit-sha>` | Only scanned images reach the registry |
-| `deploy` | OIDC login to AWS → `helm upgrade --install --atomic` with the new SHA → smoke test checks `/api/system` reports the new SHA | Automatic, verifiable, auto-rollback on failure |
+| `deploy` | Log in to AWS (OIDC role or access-key secrets) → `helm upgrade --install --atomic` with the new SHA → smoke test checks `/api/system` reports the new SHA | Automatic, verifiable, auto-rollback on failure |
 
 **Image tag = full Git commit SHA.** Every running Pod can be traced back to the exact
 commit that produced it, and the UI's *Delivery pipeline* card shows that SHA.
@@ -239,12 +239,21 @@ Pull requests run tests, builds and scans but **never push or deploy**.
    | Variable | Value |
    |----------|-------|
    | `DEPLOY_ENABLED` | `true` |
-   | `AWS_DEPLOY_ROLE_ARN` | `terraform output -raw github_deploy_role_arn` |
-   | `AWS_REGION` | `ap-south-1` |
+   | `AWS_REGION` | `ap-southeast-2` |
    | `EKS_CLUSTER_NAME` | `deskflow-eks` |
+   | `AWS_DEPLOY_ROLE_ARN` | *(OIDC option only)* `terraform output -raw github_deploy_role_arn` |
 
-   There are no AWS secrets to store: GitHub's OIDC token is exchanged for short-lived
-   credentials, and the role only trusts this repo's `main` branch / `production` environment.
+   Then pick **one** way for the deploy job to authenticate to AWS:
+
+   - **OIDC role (preferred, no stored keys):** set `github_repository` in
+     `terraform.tfvars` before `terraform apply`, then set the `AWS_DEPLOY_ROLE_ARN`
+     variable above. GitHub's OIDC token is exchanged for short-lived credentials, and
+     the role only trusts this repo's `main` branch / `production` environment.
+   - **Access keys (when your AWS Organization blocks IAM OIDC providers, as course
+     sandbox accounts often do):** leave `AWS_DEPLOY_ROLE_ARN` unset and add the
+     **repository secrets** `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (Settings →
+     Secrets and variables → Actions → *Secrets*), using the same IAM user that ran
+     `terraform apply`. That user is already cluster-admin as the cluster creator.
 
 ---
 
@@ -283,7 +292,7 @@ Security Admission in Kubernetes).
 ## 7. AWS infrastructure (Terraform)
 
 ```text
-AWS (ap-south-1)
+AWS (ap-southeast-2)
  ├── VPC 10.0.0.0/16
  │    ├── 2 public subnets  (Internet Gateway, NAT, load balancers)
  │    ├── 2 private subnets (worker nodes)
@@ -291,15 +300,16 @@ AWS (ap-south-1)
  ├── EKS 1.35 (standard support only; avoids extended-support fees)
  │    ├── managed node group: 3 × t3.medium (min 2, max 4), AL2023
  │    └── add-ons: vpc-cni, coredns, kube-proxy, pod-identity, ebs-csi
- └── IAM: GitHub OIDC provider + deploy role (EKS access entry)
+ └── IAM: node/cluster roles (+ optional GitHub OIDC deploy role)
 ```
 
 Prerequisites: Terraform ≥ 1.6, AWS CLI configured with an identity allowed to create
-VPC/EC2/EKS/IAM resources.
+VPC/EC2/EKS/IAM resources in the region. With a named CLI profile, run
+`export AWS_PROFILE=<profile>` first. Terraform, kubectl and the scripts all honour it.
 
 ```bash
 cd terraform
-cp terraform.tfvars.example terraform.tfvars    # set github_repository = "you/your-repo"
+cp terraform.tfvars.example terraform.tfvars    # optional: github_repository = "you/your-repo" (OIDC)
 terraform init
 terraform plan                                  # review: VPC, subnets, NAT, EKS, node group, IAM
 terraform apply                                 # ~15 minutes

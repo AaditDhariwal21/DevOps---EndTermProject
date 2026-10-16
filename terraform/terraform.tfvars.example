@@ -2,7 +2,7 @@
 # Never put AWS access keys here — Terraform reads credentials from the
 # AWS CLI profile / environment (aws configure, AWS_PROFILE, or aws sso login).
 
-region       = "ap-south-1"
+region       = "ap-southeast-2"
 project_name = "deskflow"
 environment  = "dev"
 
@@ -20,8 +20,10 @@ cluster_admin_arns = [
   # "arn:aws:iam::123456789012:user/teammate",
 ]
 
-# Enables keyless GitHub Actions deploys (OIDC). Format: "owner/repo".
-github_repository = "your-github-username/deskflow"
+# Keyless GitHub Actions deploys via OIDC. Format: "owner/repo".
+# Leave empty if your AWS Organization blocks IAM OIDC providers (iam:CreateOpenIDConnectProvider);
+# CI then deploys with access keys stored as GitHub secrets (see README §5).
+github_repository = ""
 
 # Set to false if your AWS account already has the GitHub OIDC provider.
 create_github_oidc_provider = true

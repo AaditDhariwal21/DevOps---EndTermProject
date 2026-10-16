@@ -14,7 +14,7 @@ terraform {
   # backend "s3" {
   #   bucket       = "<your-unique-tfstate-bucket>"
   #   key          = "deskflow/terraform.tfstate"
-  #   region       = "ap-south-1"
+  #   region       = "ap-southeast-2"
   #   use_lockfile = true
   #   encrypt      = true
   # }

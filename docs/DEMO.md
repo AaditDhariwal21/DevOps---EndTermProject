@@ -47,7 +47,7 @@ In GitHub Actions, narrate while it runs:
    then pushed as `ghcr.io/…:<sha>`.
 3. Show **GHCR**: the new tag is the commit SHA, not `latest`. "Production traces back
    to an exact commit."
-4. **deploy**: OIDC to AWS (no stored keys), `helm upgrade --atomic`, smoke test asserts
+4. **deploy**: logs in to AWS (GitHub secrets), `helm upgrade --atomic`, smoke test asserts
    the live SHA equals the commit.
 
 Refresh the app: the new title shows, and the *Delivery pipeline* card shows the new SHA.
@@ -61,7 +61,7 @@ kubectl get pods -n deskflow                # new pod names (rolling update, zer
 
 Show `terraform/main.tf` (VPC module: 2 public + 2 private subnets, single NAT; EKS
 module: node group, add-ons) and the AWS console: VPC subnets, EKS cluster, node group in
-ap-south-1. "Nothing here was clicked together; `terraform destroy` removes all of it."
+ap-southeast-2. "Nothing here was clicked together; `terraform destroy` removes all of it."
 
 ## 5. Kubernetes + Helm + Ingress (1 min)
 
