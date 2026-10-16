@@ -1,0 +1,47 @@
+# LAB 2 — solution: Service selector matches the Pod labels.
+#   kubectl apply -f troubleshooting/solutions/fixed-service.yaml
+#   kubectl get endpointslices -n deskflow-lab -l kubernetes.io/service-name=lab-api   → 2 endpoints
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deskflow-lab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-api
+  namespace: deskflow-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lab-api
+  template:
+    metadata:
+      labels:
+        app: lab-api
+        tier: backend
+    spec:
+      containers:
+        - name: api
+          image: nginxinc/nginx-unprivileged:1.30-alpine
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-api
+  namespace: deskflow-lab
+spec:
+  selector:
+    # FIXED: selector matches the Pod template labels.
+    app: lab-api
+  ports:
+    - port: 80
+      targetPort: http

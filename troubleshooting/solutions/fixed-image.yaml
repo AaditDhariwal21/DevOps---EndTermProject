@@ -1,0 +1,35 @@
+# LAB 1 — solution: correct image tag.
+#   kubectl apply -f troubleshooting/solutions/fixed-image.yaml
+#   kubectl rollout status deploy/lab-web -n deskflow-lab
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deskflow-lab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-web
+  namespace: deskflow-lab
+  labels:
+    app: lab-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lab-web
+  template:
+    metadata:
+      labels:
+        app: lab-web
+    spec:
+      containers:
+        - name: web
+          # FIXED: the tag now exists in the registry.
+          image: nginxinc/nginx-unprivileged:1.30-alpine
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

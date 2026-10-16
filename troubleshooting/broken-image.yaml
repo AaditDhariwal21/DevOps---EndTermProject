@@ -1,0 +1,40 @@
+# LAB 1 — Broken image
+#   kubectl apply -f troubleshooting/broken-image.yaml
+#   kubectl get pods -n deskflow-lab                      → ImagePullBackOff / ErrImagePull
+#   kubectl describe pod -l app=lab-web -n deskflow-lab   → read the Events section
+#   kubectl get events -n deskflow-lab --sort-by=.lastTimestamp
+#
+# Hint: compare the image reference with what actually exists in the registry.
+# Fix:  troubleshooting/solutions/fixed-image.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deskflow-lab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-web
+  namespace: deskflow-lab
+  labels:
+    app: lab-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lab-web
+  template:
+    metadata:
+      labels:
+        app: lab-web
+    spec:
+      containers:
+        - name: web
+          # BUG: this tag does not exist (typo: "alpline").
+          image: nginxinc/nginx-unprivileged:1.30-alpline
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

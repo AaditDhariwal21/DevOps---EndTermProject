@@ -1,0 +1,59 @@
+# LAB 3 (bonus) — Running but never Ready
+#   kubectl apply -f troubleshooting/broken-probe.yaml
+#   kubectl get pods -n deskflow-lab -l app=lab-probe     → STATUS Running, READY 0/1
+#   kubectl describe pod -l app=lab-probe -n deskflow-lab → "Readiness probe failed: ... connection refused"
+#   kubectl get endpointslices -n deskflow-lab -l kubernetes.io/service-name=lab-probe
+#                                                         → endpoints listed as not ready
+#
+# Lesson: readiness ≠ liveness. A Pod that fails readiness keeps running but
+# receives no traffic — exactly what DeskFlow's /ready endpoint relies on when
+# the database is down.
+# Fix:  troubleshooting/solutions/fixed-probe.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deskflow-lab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-probe
+  namespace: deskflow-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lab-probe
+  template:
+    metadata:
+      labels:
+        app: lab-probe
+    spec:
+      containers:
+        - name: web
+          image: nginxinc/nginx-unprivileged:1.30-alpine
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              # BUG: nginx-unprivileged listens on 8080, not 80.
+              port: 80
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-probe
+  namespace: deskflow-lab
+spec:
+  selector:
+    app: lab-probe
+  ports:
+    - port: 80
+      targetPort: http

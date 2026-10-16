@@ -1,0 +1,55 @@
+# LAB 2 — Broken Service (no endpoints)
+#   kubectl apply -f troubleshooting/broken-service.yaml
+#   kubectl get pods -n deskflow-lab --show-labels       → Pods are Running and Ready...
+#   kubectl get svc,endpointslices -n deskflow-lab       → ...but the Service has no endpoints
+#   kubectl describe svc lab-api -n deskflow-lab         → compare "Selector" with the Pod labels
+#   kubectl run curl -n deskflow-lab --rm -it --image=busybox:1.37 --restart=Never \
+#     -- wget -qO- -T 3 http://lab-api                   → times out / connection refused
+#
+# Lesson: a Service finds Pods ONLY through its label selector.
+#         No matching labels = no endpoints = no traffic.
+# Fix:  troubleshooting/solutions/fixed-service.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deskflow-lab
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-api
+  namespace: deskflow-lab
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lab-api
+  template:
+    metadata:
+      labels:
+        app: lab-api
+        tier: backend
+    spec:
+      containers:
+        - name: api
+          image: nginxinc/nginx-unprivileged:1.30-alpine
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-api
+  namespace: deskflow-lab
+spec:
+  selector:
+    # BUG: Pods are labelled app=lab-api, not app=lab-backend.
+    app: lab-backend
+  ports:
+    - port: 80
+      targetPort: http
