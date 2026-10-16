@@ -22,6 +22,9 @@ router = APIRouter(prefix="/api/tickets", tags=["tickets"])
 TICKETS_CREATED = Counter(
     "deskflow_tickets_created_total", "Tickets created, by priority", ["priority"]
 )
+# Pre-create every series at 0, so dashboards show 0 rather than "No data" after a deploy.
+for _priority in Priority:
+    TICKETS_CREATED.labels(priority=_priority.value)
 
 
 def _log(db: Session, ticket: Ticket, action: str, detail: str = "") -> None:

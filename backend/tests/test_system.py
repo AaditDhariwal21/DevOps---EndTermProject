@@ -42,6 +42,8 @@ def test_metrics_exposes_prometheus_format(client):
     assert "text/plain" in response.headers["content-type"]
     assert "http_requests_total" in response.text
     assert "http_request_duration_seconds" in response.text
+    # Business counter exists for every priority even before any ticket is created.
+    assert 'deskflow_tickets_created_total{priority="urgent"}' in response.text
 
 
 def test_openapi_docs_available(client):
