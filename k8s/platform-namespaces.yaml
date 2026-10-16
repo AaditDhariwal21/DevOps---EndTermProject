@@ -1,0 +1,15 @@
+# Namespaces for cluster add-ons installed by scripts/bootstrap-cluster.sh.
+# No Pod Security labels here: node-exporter needs host access.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress
+  labels:
+    app.kubernetes.io/part-of: platform

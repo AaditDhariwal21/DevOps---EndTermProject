@@ -1,0 +1,15 @@
+# Application namespace: logical isolation for everything DeskFlow runs.
+#   kubectl apply -f k8s/namespace.yaml
+#
+# Pod Security Admission: Pods must meet the "baseline" profile, and we get
+# warnings/audit entries for anything that falls short of "restricted"
+# (the DeskFlow chart is written to pass "restricted").
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: deskflow
+  labels:
+    app.kubernetes.io/part-of: deskflow
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
