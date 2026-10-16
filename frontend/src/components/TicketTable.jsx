@@ -28,7 +28,7 @@ function FilterChips({ value, onChange, counts }) {
 function SkeletonRows() {
   return Array.from({ length: 5 }, (_, i) => (
     <tr key={i} className="skeleton-row">
-      <td colSpan={7}>
+      <td colSpan={6}>
         <span className="skeleton" />
       </td>
     </tr>
@@ -106,7 +106,6 @@ export default function TicketTable({
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Assignee</th>
-                <th>Updated</th>
                 <th>
                   <span className="sr-only">Actions</span>
                 </th>
@@ -122,7 +121,9 @@ export default function TicketTable({
                       <button className="link" onClick={() => onEdit(t)}>
                         <span className="ticket-id">#{t.id}</span> {t.title}
                       </button>
-                      <small>{t.requester_email}</small>
+                      <small>
+                        {t.requester_email} · updated {timeAgo(t.updated_at)}
+                      </small>
                     </td>
                     <td data-label="Category">
                       <CategoryTag value={t.category} />
@@ -149,9 +150,6 @@ export default function TicketTable({
                         <Avatar name={t.assignee} />
                         {t.assignee ?? <em className="muted">Unassigned</em>}
                       </span>
-                    </td>
-                    <td data-label="Updated" className="muted nowrap">
-                      {timeAgo(t.updated_at)}
                     </td>
                     <td className="cell-actions">
                       <button className="icon-btn" onClick={() => onEdit(t)} aria-label={`Edit ticket ${t.id}`}>
