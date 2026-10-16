@@ -44,15 +44,19 @@ variable "cluster_version" {
 }
 
 variable "node_instance_types" {
-  description = "Instance types for the managed node group."
+  description = <<-EOT
+    Instance types for the managed node group. m7i-flex.large (2 vCPU, 8 GiB, ~29 pods)
+    is Free Tier eligible: accounts on the AWS Free plan reject non-eligible types such
+    as t3.medium ("instance type is not eligible for Free Tier").
+  EOT
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["m7i-flex.large"]
 }
 
 variable "node_desired_size" {
-  description = "Desired worker nodes. 3 × t3.medium fits the app + Prometheus/Grafana + ingress."
+  description = "Desired worker nodes. 2 × m7i-flex.large fits the app + Prometheus/Grafana + ingress."
   type        = number
-  default     = 3
+  default     = 2
 }
 
 variable "node_min_size" {
@@ -62,7 +66,7 @@ variable "node_min_size" {
 
 variable "node_max_size" {
   type    = number
-  default = 4
+  default = 3
 }
 
 variable "cluster_admin_arns" {

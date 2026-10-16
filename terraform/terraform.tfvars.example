@@ -10,10 +10,10 @@ vpc_cidr = "10.0.0.0/16"
 az_count = 2
 
 cluster_version     = "1.35"
-node_instance_types = ["t3.medium"]
-node_desired_size   = 3
+node_instance_types = ["m7i-flex.large"] # Free Tier eligible (Free plan accounts reject t3.medium)
+node_desired_size   = 2
 node_min_size       = 2
-node_max_size       = 4
+node_max_size       = 3
 
 # Other IAM users/roles that should get kubectl admin (optional)
 cluster_admin_arns = [

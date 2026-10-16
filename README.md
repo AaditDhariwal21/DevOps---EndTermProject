@@ -298,7 +298,7 @@ AWS (ap-southeast-2)
  │    ├── 2 private subnets (worker nodes)
  │    └── 1 NAT gateway
  ├── EKS 1.35 (standard support only; avoids extended-support fees)
- │    ├── managed node group: 3 × t3.medium (min 2, max 4), AL2023
+ │    ├── managed node group: 2 × m7i-flex.large (min 2, max 3), AL2023
  │    └── add-ons: vpc-cni, coredns, kube-proxy, pod-identity, ebs-csi
  └── IAM: node/cluster roles (+ optional GitHub OIDC deploy role)
 ```
@@ -320,8 +320,13 @@ kubectl get nodes
 No credentials live in this repo: Terraform reads them from your AWS CLI profile, and
 `*.tfvars` / `*.tfstate` are git-ignored (only `terraform.tfvars.example` is committed).
 
-**Cost:** roughly $0.10/h (EKS) + 3 × $0.045/h (nodes) + $0.056/h (NAT) + load balancer
-≈ **$0.30/hour**. Destroy it when you're done (section 11).
+**Cost (Sydney):** $0.10/h (EKS) + 2 × $0.12/h (m7i-flex.large nodes) + $0.059/h (NAT)
++ ~$0.03/h (load balancer) ≈ **$0.43/hour**. Destroy it when you're done (section 11).
+
+**AWS Free plan accounts** only allow Free Tier eligible instance types (t3.medium is
+rejected with *"instance type is not eligible for Free Tier"*, which leaves the node group
+stuck in `CREATING`). That's why the default is `m7i-flex.large`, which is eligible and
+has double t3.medium's memory. On the Free plan, usage is paid from credits only.
 
 ---
 

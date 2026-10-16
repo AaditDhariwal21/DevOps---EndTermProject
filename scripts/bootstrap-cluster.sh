@@ -53,14 +53,17 @@ echo "==> kube-prometheus-stack (Prometheus + Grafana)"
 helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
   --version "$KPS_VERSION" -n monitoring \
   -f "$ROOT/monitoring/kube-prometheus-stack-values.yaml" \
-  --set grafana.adminPassword="$GRAFANA_PASSWORD" \
-  --wait --timeout 10m
+  --set grafana.adminPassword="$GRAFANA_PASSWORD"
+# Wait on the workloads with kubectl rather than `helm --wait`: Helm 4's watcher
+# strategy can report pre-existing CRDs as "not ready" and fail the install.
+kubectl -n monitoring rollout status deploy/monitoring-kube-prometheus-operator --timeout=10m
+kubectl -n monitoring rollout status deploy/monitoring-grafana --timeout=10m
 
 echo "==> Traefik ingress controller"
 helm upgrade --install traefik traefik/traefik \
   --version "$TRAEFIK_VERSION" -n ingress \
-  -f "$ROOT/monitoring/traefik-values.yaml" \
-  --wait --timeout 10m
+  -f "$ROOT/monitoring/traefik-values.yaml"
+kubectl -n ingress rollout status deploy/traefik --timeout=10m
 
 echo
 echo "Done. Next:"
