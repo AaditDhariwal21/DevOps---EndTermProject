@@ -86,13 +86,13 @@ spec:
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          # Startup: give migrations time to run before liveness kicks in (up to 150s).
+          # Startup: allow up to 5 min for the DB to come up and migrations to run before liveness kicks in.
           startupProbe:
             httpGet:
               path: /health
               port: http
             periodSeconds: 5
-            failureThreshold: 30
+            failureThreshold: 60
           # Liveness: is the process alive? (cheap, no DB) — failing restarts the container.
           livenessProbe:
             httpGet:
