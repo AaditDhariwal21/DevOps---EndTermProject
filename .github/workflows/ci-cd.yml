@@ -266,7 +266,7 @@ jobs:
         run: |
           host=$(kubectl -n ingress get svc traefik -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
           echo "app_url=http://${host}" >> "$GITHUB_OUTPUT"
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             sha=$(curl -fsS "http://${host}/api/system" | python3 -c 'import json,sys; print(json.load(sys.stdin)["git_sha"])') && break
             sleep 10
           done
