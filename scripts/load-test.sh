@@ -31,8 +31,8 @@ done
 echo "==> Load running. HPA status (Ctrl+C to stop early):"
 end=$(( $(date +%s) + DURATION ))
 while [ "$(date +%s)" -lt "$end" ]; do
-  printf '%s  ' "$(date +%H:%M:%S)"
-  kubectl -n "$NS" get hpa deskflow-backend --no-headers 2>/dev/null \
-    | awk '{printf "cpu=%s  replicas=%s\n", $3, $(NF-1)}' || echo "hpa not found"
+  kubectl -n "$NS" get hpa deskflow-backend -o \
+    jsonpath="{'$(date +%H:%M:%S)'}  cpu={.status.currentMetrics[0].resource.current.averageUtilization}% (target {.spec.metrics[0].resource.target.averageUtilization}%)  replicas={.status.currentReplicas} → desired={.status.desiredReplicas}{'\n'}" \
+    2>/dev/null || echo "hpa not found"
   sleep 15
 done
