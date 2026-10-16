@@ -1,0 +1,59 @@
+# Full local stack:  docker compose up --build
+#   UI       http://localhost:3000
+#   API      http://localhost:8000/docs   (also proxied at http://localhost:3000/docs)
+#   Postgres localhost:5432  (deskflow / deskflow)
+
+name: deskflow
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-deskflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deskflow}
+      POSTGRES_DB: ${POSTGRES_DB:-deskflow}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+    image: deskflow-backend:local
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-deskflow}:${POSTGRES_PASSWORD:-deskflow}@postgres:5432/${POSTGRES_DB:-deskflow}
+      ENVIRONMENT: docker-compose
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        GIT_SHA: ${GIT_SHA:-local}
+    image: deskflow-frontend:local
+    environment:
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "3000:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
