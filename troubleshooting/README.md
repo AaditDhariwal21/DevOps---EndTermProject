@@ -83,8 +83,14 @@ kubectl patch svc deskflow-backend -n deskflow \
 kubectl get endpointslices -n deskflow -l kubernetes.io/service-name=deskflow-backend  # empty
 # UI shows "Can't reach the DeskFlow API"; Grafana request rate drops to 0
 
-helm rollback deskflow -n deskflow        # or re-run helm upgrade → selector restored
+# Fix it the way you diagnosed it: put the selector back
+kubectl patch svc deskflow-backend -n deskflow \
+  -p '{"spec":{"selector":{"app.kubernetes.io/component":"backend"}}}'
 ```
+
+Or let Helm reconcile the drift: `helm upgrade deskflow ./helm/deskflow -n deskflow --reuse-values`.
+On **Helm 4** add `--force-conflicts`: Helm 4 uses server-side apply and, by design,
+refuses to overwrite a field another tool (`kubectl patch`) now owns.
 
 ## Clean up
 
