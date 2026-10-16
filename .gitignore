@@ -1,0 +1,49 @@
+# ---------- Secrets & local env ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kubeconfig*
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+
+# ---------- Node / frontend ----------
+node_modules/
+dist/
+npm-debug.log*
+
+# ---------- Terraform ----------
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+*.tfplan
+tfplan
+override.tf
+override.tf.json
+
+# ---------- Helm ----------
+helm/**/charts/*.tgz
+
+# ---------- Editors / OS ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---------- Scan reports ----------
+trivy-*.txt
+trivy-*.sarif
