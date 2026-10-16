@@ -1,0 +1,41 @@
+# Traefik as the Ingress controller (implements the DeskFlow Ingress resource).
+# Chosen over ingress-nginx, which the Kubernetes project retired in March 2026.
+#
+#   helm upgrade --install traefik traefik/traefik --version 42.0.0 \
+#     -n ingress --create-namespace -f monitoring/traefik-values.yaml
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    enabled: true
+    # Publish the load balancer address on Ingress status (kubectl get ingress shows it).
+    publishedService:
+      enabled: true
+  kubernetesCRD:
+    enabled: false
+
+service:
+  type: LoadBalancer
+  annotations:
+    # On EKS, provision an internet-facing Network Load Balancer.
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+
+ports:
+  websecure:
+    expose:
+      default: false   # HTTP only for the demo (no certificate)
+
+# Traefik's own metrics, scraped by Prometheus too.
+metrics:
+  prometheus:
+    serviceMonitor:
+      enabled: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
